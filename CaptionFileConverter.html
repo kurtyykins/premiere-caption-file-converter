@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Caption File Formatter</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+
+<style>
+  :root {
+    font-size: 10px !important;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+  }
+
+  .container {
+    height: 100vh;
+    min-width: 800px;
+  }
+
+  textarea {
+    width: 100%;
+    height: 240px;
+    resize: none;
+    font-size: 2rem !important;
+  }
+
+  .dropArea {
+    height: 30vh;
+    min-height: 275px;
+    width: 100%;
+    border: 8px dashed #0d6efd;
+    vertical-align: middle;
+    display: flex;
+    align-items: center;
+    justify-content: center
+  }
+
+  .dropText {
+    font-size: 32px;
+    font-weight: bold;
+  }
+
+  .dropAreaHighlight {
+    border: 16px dashed #0d6efd;
+  }
+
+  .btn,
+  .form-control,
+  .input-group-text {
+    font-size: 2rem !important;
+  }
+</style>
+
+<body>
+  <div class="container">
+
+    <div class="row text-center">
+      <div class="col-12 p-3">
+
+        <div class="row pb-3">
+          <div class="col-12">
+            <h1>Caption File Formatter</h1>
+          </div>
+        </div>
+
+        <div class="row pb-3">
+
+          <div class="col-12 p-1">
+            <input type="file" class="form-control" id="fileInput" accept=".txt" onchange="loadFile()">
+          </div>
+
+        </div>
+
+        <div class="row pb-3">
+          <div class="col-12 p-1">
+            <button class="btn btn-primary" type="button" onclick="formatText()"><i class="fa fa-refresh"></i>
+              Update</button>
+            <button class="btn btn-primary" type="button" onclick="copyText()"><i class="fa fa-copy"></i> Copy
+              Text</button>
+            <button class="btn btn-primary" type="button" onclick="saveAsTextfile()"><i class="fa fa-file-text"></i>
+              Download File</button>
+            <button class="btn btn-danger" type="button" onclick="resetPage()"><i class="fa fa-trash-o"></i>
+              Reset</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- DRAG AND DROG BOX -->
+    <div class="row pb-3">
+      <div class="col-12 p-3" id="dropAreaContainer">
+        <div class="dropArea text-center" id="dropArea" ondrop="handleFileDrop(event)"
+          ondragover="handleDragover(event)" ondragleave="handleDragleave(event)">
+          <h1 class="dropText"><i class="fa fa-upload" style="font-size: 80px;"></i><br>Drop Text File
+            Here</h1>
+        </div>
+      </div>
+    </div>
+
+    <div class="row pb-3">
+
+      <div class="col-xl-6 col-12 p-1">
+        <div class="input-group d-grid">
+          <h2 class="text-center">Original Text</h2>
+          <textarea id="textInput"></textarea>
+        </div>
+      </div>
+
+      <div class="col-xl-6 col-12 p-1">
+        <div class="input-group d-grid">
+          <h2 class="text-center">Formatted Text</h2>
+          <textarea id="textOutput" readonly></textarea>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</body>
+
+<script>
+
+  function loadFile() {
+
+    let fileInput = document.getElementById('fileInput');
+    let file = fileInput.files[0];
+    let reader = new FileReader();;
+
+    reader.onload = function (event) {
+      let textInput = event.target.result;
+      document.getElementById('textInput').value = textInput;
+      formatText();
+    };
+
+    reader.readAsText(file);
+
+  }
+
+  function formatText() {
+
+    let textInput = document.getElementById('textInput').value;
+    let formattedText = formatTextIntoCorrectFormat(textInput);
+
+    document.getElementById('textOutput').value = formattedText;
+
+  }
+
+  function formatTextIntoCorrectFormat(text) {
+
+    // Split text into lines
+    let lines = text.split('\n');
+
+    // Regular expression to match timestamps in the format "00:00:00:00 - 00:00:04:00"
+    let timestampRegex = /(\d{2}):(\d{2}):(\d{2}):(\d{2}) - (\d{2}):(\d{2}):(\d{2}):(\d{2})/g;
+    // Regular expression to match lines containing "V" followed by numbers
+    let vNumberRegex = /V\d+/;
+
+    // Iterate through lines
+    for (let i = 0; i < lines.length; i++) {
+
+      // Replace timestamps with formatted version
+      if (timestampRegex.test(lines[i])) {
+        lines[i] = lines[i].replace(timestampRegex, function (match, startHours, startMinutes, startSeconds, startMilliseconds, endHours, endMinutes, endSeconds, endMilliseconds) {
+          return formatTimestamp(startHours, startMinutes, startSeconds, startMilliseconds) + ',' + formatTimestamp(endHours, endMinutes, endSeconds, endMilliseconds);
+        });
+      }
+
+      // Remove lines containing "V" followed by numbers
+      if (vNumberRegex.test(lines[i])) {
+        lines.splice(i, 1); // Remove the line
+        i--; // Decrement index to account for removed line
+      }
+    }
+
+    //Remove all line breaks and then add them in the correct place by converted to array and text
+    let formattedText = lines.join(' ');
+    let lines2 = formattedText.split(' 00:');
+    let formattedText2 = lines2.join('\n00:');
+    let lines3 = formattedText2.split('\n');
+
+    //create a new array to split each entry into 2
+    let textResult = [];
+    for (let i = 0; i < lines3.length; i++) {
+      let lineToCut = lines3[i];
+      let firstPart = lineToCut.substring(0, 25);
+      let secondPart = lineToCut.substring(26);
+
+      //Remove space that appears at the end for some reason
+      secondPart = secondPart.substring(0, secondPart.length - 1)
+
+      textResult.push(firstPart);
+      textResult.push(secondPart + '\n');
+
+    }
+
+    let finalResult = textResult.join('\n');
+    return finalResult;
+
+  }
+
+  function formatTimestamp(hours, minutes, seconds, milliseconds) {
+
+    // Format the timestamp
+    let formattedTimestamp = hours + ':' + minutes + ':' + seconds + '.' + milliseconds + '0';
+    return formattedTimestamp;
+
+  }
+
+  function copyText() {
+
+    // Get the text field
+    let copyText = document.getElementById("textOutput");
+
+    // Select the text field
+    copyText.select();
+
+    // Copy the text inside the text field
+    navigator.clipboard.writeText(copyText.value);
+
+  }
+
+  function saveAsTextfile() {
+
+    let text = document.getElementById('textOutput').value;
+    let blob = new Blob([text], { type: 'text/plain' });
+    let url = URL.createObjectURL(blob);
+    let file = document.getElementById('fileInput').files[0];
+    let fileName = 'captions';
+
+    if (file) fileName = file.name.slice(0, -4);
+
+    let a = document.createElement('a');
+    a.href = url;
+    a.download = fileName + '_Converted.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    // Revoke the URL object to free up memory
+    URL.revokeObjectURL(url);
+
+  }
+
+  function resetPage() {
+
+    location.reload();
+
+  }
+
+  // Function to handle drag and dropped files and pass to file input
+  function handleFileDrop(event) {
+
+    event.preventDefault();
+    const droppedFiles = event.dataTransfer.files;
+    const fileInput = document.getElementById('fileInput');
+
+    if (droppedFiles && droppedFiles[0].type.startsWith('text/plain')) {
+      fileInput.files = event.dataTransfer.files;
+    }
+
+    loadFile();
+
+  }
+
+
+  function handleDragover(event) {
+
+    event.preventDefault();
+    document.getElementById('dropArea').classList.add('dropAreaHighlight');
+
+  }
+
+  function handleDragleave(event) {
+
+    document.getElementById('dropArea').classList.remove('dropAreaHighlight');
+
+  }
+
+</script>
+
+</html>
